@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Review</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.8/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js for visual representation -->
+ <script src="./script.js"></script>
+  <style>
+    /* General body styling */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #4CAF50;
+    }
+
+    /* Centering main content */
+    .container {
+      width: 80%;
+      margin: 0 auto;
+    }
+
+    /* Styling for the search bar */
+    .search-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    .search-container input {
+      padding: 10px;
+      font-size: 16px;
+      width: 50%;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .search-container button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .search-container button:hover {
+      background-color: #45a049;
+    }
+
+    /* Card design for product info */
+    .card {
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .card img {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+    }
+
+    .card-header {
+      font-size: 24px;
+      color: #4CAF50;
+      margin-bottom: 10px;
+    }
+
+    .card-body {
+      font-size: 16px;
+      color: #666;
+    }
+
+    .card-footer {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    /* Review box */
+    .review-box {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #f1f1f1;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .review-box textarea {
+      width: 100%;
+      height: 120px;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      resize: none;
+      font-size: 16px;
+    }
+
+    .review-box button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .review-box button:hover {
+      background-color: #45a049;
+    }
+
+    /* Chart container styling */
+    .chart-container {
+      width: 100%;
+      height: 400px;
+      margin-bottom: 40px;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Responsive styling */
+    @media screen and (max-width: 768px) {
+      .search-container input {
+        width: 70%;
+      }
+      .search-container button {
+        width: 20%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Brand and Product Reviews</h1>
+
+    <!-- Search Bar Section -->
+    <div class="search-container">
+      <input type="text" id="searchInput" placeholder="Search for brands or products..." />
+      <button onclick="fetchData()">Search</button>
+    </div>
+
+    <!-- Chart to visually represent search data -->
+    <div class="chart-container">
+      <canvas id="priceChart"></canvas>
+    </div>
+
+    <!-- Brands Section -->
+    <div id="brandsContainer" class="brands-container">
+      <h2>Brands</h2>
+      <div class="card">
+        <div class="card-header">Apple</div>
+        <div class="card-body">Apple Inc. is known for its premium products like iPhones, MacBooks, and iPads.</div>
+        <div class="card-footer">
+          <button onclick="viewReviews('apple')">View Reviews</button>
+        </div>
+      </div>
+      <!-- Add more brand cards here -->
+    </div>
+
+    <!-- Products Section -->
+    <h2>Products</h2>
+    <div id="productsContainer" class="products-container">
+      <!-- Product details will be dynamically added here -->
+    </div>
+
+    <!-- Review Box -->
+    <div id="reviewBox" class="review-box">
+      <h3>Leave a Review</h3>
+      <textarea id="reviewText" placeholder="Write your review here..."></textarea>
+      <button onclick="submitReview()">Submit Review</button>
+    </div>
+  </div>
+
+  <script>
+    // Function to fetch and display data for brands and products
+    function fetchData() {
+      const searchQuery = document.getElementById("searchInput").value.toLowerCase();
+      
+      // Example product data for demonstration
+      const products = [
+        { name: "iPhone", price: 999, brand: "Apple" },
+        { name: "Samsung Galaxy", price: 899, brand: "Samsung" },
+        { name: "MacBook", price: 1299, brand: "Apple" },
+        { name: "Dell XPS", price: 1099, brand: "Dell" }
+      ];
+
+      // Filter products based on search query
+      const filteredProducts = products.filter(product => product.name.toLowerCase().includes(searchQuery));
+
+      // Update products container
+      const productsContainer = document.getElementById("productsContainer");
+      productsContainer.innerHTML = ""; // Clear existing products
+
+      filteredProducts.forEach(product => {
+        const productCard = document.createElement("div");
+        productCard.classList.add("card");
+        productCard.innerHTML = `
+          <div class="card-header">${product.name}</div>
+          <div class="card-body">
+            Price: $${product.price}<br>
+            Brand: ${product.brand}
+          </div>
+          <div class="card-footer">
+            <button onclick="viewReviews('${product.name}')">View Reviews</button>
+          </div>
+        `;
+        productsContainer.appendChild(productCard);
+      });
+
+      // Update chart with the filtered product data
+      updateChart(filteredProducts);
+    }
+
+    // Function to display chart of product prices based on brands
+    function updateChart(products) {
+      const brandPrices = {};
+
+      // Collect prices by brand
+      products.forEach(product => {
+        if (!brandPrices[product.brand]) {
+          brandPrices[product.brand] = [];
+        }
+        brandPrices[product.brand].push(product.price);
+      });
+
+      // Prepare data for the chart
+      const labels = Object.keys(brandPrices);
+      const data = labels.map(brand => {
+        const prices = brandPrices[brand];
+        const averagePrice = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+        return averagePrice;
+      });
+
+      // Ensure that chart canvas exists before updating
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      
+      // If chart exists, destroy it before creating a new one
+      if (window.priceChartInstance) {
+        window.priceChartInstance.destroy();
+      }
+
+      // Create or update the chart
+      window.priceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Average Price ($)',
+            data: data,
+            backgroundColor: 'rgba(76, 175, 80, 0.6)',
+            borderColor: 'rgba(76, 175, 80, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    // Placeholder functions for review functionality
+    function viewReviews(product) {
+      console.log(`Viewing reviews for ${product}`);
+    }
+
+    function submitReview() {
+      const reviewText = document.getElementById("reviewText").value;
+      console.log(`Review submitted: ${reviewText}`);
+    }
+  </script>
+</body>
+</html>
